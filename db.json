@@ -1,0 +1,18 @@
+{
+  "users": [
+    {
+      "id": "dongmin6103",
+      "password": "Ben0604$",
+      "role": "user"
+    }
+  ],
+  "petitions": [],
+  "sessions": [
+    {
+      "token": "f0ce11e7-324c-4314-bcfb-581ce3f925a9",
+      "userId": "dongmin6103",
+      "role": "user",
+      "createdAt": "2025-10-19T11:43:22.106Z"
+    }
+  ]
+}
