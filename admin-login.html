@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>관리자 로그인 - 영국 마법부 포털</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="page-header">
+    <div class="container">
+      <a class="logo" href="index.html">← 포털 홈으로</a>
+      <h1>관리자 로그인</h1>
+      <p>보안 담당자와 고위 마법부 직원만 접근 가능한 전용 로그인 페이지입니다.</p>
+    </div>
+  </header>
+
+  <main class="container narrow">
+    <form class="form-card" id="admin-login-form" novalidate>
+      <h2>보안 로그인</h2>
+      <p class="list-help">관리자 권한이 부여된 아이디와 비밀번호를 입력하세요.</p>
+
+      <label for="admin-login-id">아이디</label>
+      <input id="admin-login-id" type="text" name="id" placeholder="관리자 아이디" required autocomplete="username">
+
+      <label for="admin-login-password">비밀번호</label>
+      <input id="admin-login-password" type="password" name="password" placeholder="비밀번호" required autocomplete="current-password">
+
+      <button type="submit" class="button primary">관리자 로그인</button>
+      <p class="form-note">일반 이용자이신가요? <a href="login.html">일반 로그인 페이지</a></p>
+      <p class="error-message" id="admin-login-error" aria-live="polite" hidden></p>
+    </form>
+
+    <section class="list-section" aria-live="polite">
+      <h2>최근 인증된 관리자</h2>
+      <p class="list-help">이 기기에서 성공적으로 로그인한 관리자 계정 목록입니다.</p>
+      <p class="list-help" id="admin-history-empty" hidden>아직 관리자 로그인 기록이 없습니다.</p>
+      <ul class="user-list" id="admin-history-list"></ul>
+    </section>
+
+    <section class="form-card" aria-live="polite">
+      <h2>관리자 접근 안내</h2>
+      <p class="list-help">관리자 로그인을 완료하면 자동으로 <strong>비밀 관리자실</strong>로 이동합니다. 관리자 권한이 없는 계정은 접근이 거부됩니다.</p>
+      <ul class="guidelines">
+        <li>관리자 계정은 회원가입 시 아이디가 <code>admin</code>인 경우 자동으로 생성됩니다.</li>
+        <li>비밀번호를 잊어버린 경우 포털 보안국에 문의하세요.</li>
+        <li>공용 기기에서는 로그인 후 반드시 브라우저 데이터를 삭제하세요.</li>
+      </ul>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>© 2024 영국 마법부. 무단 접근 시 기억 제거 주문이 시행됩니다.</p>
+    </div>
+  </footer>
+
+  <script>
+    const AUTH_TOKEN_KEY = 'ministryAuthToken';
+    const CURRENT_USER_KEY = 'ministryCurrentUser';
+    const ROLE_KEY = 'ministryCurrentRole';
+    const ADMIN_HISTORY_KEY = 'ministryAdminLoginHistory';
+
+    const form = document.getElementById('admin-login-form');
+    const errorMessage = document.getElementById('admin-login-error');
+    const idInput = document.getElementById('admin-login-id');
+    const passwordInput = document.getElementById('admin-login-password');
+    const historyList = document.getElementById('admin-history-list');
+    const historyEmpty = document.getElementById('admin-history-empty');
+
+    const loadHistory = () => {
+      try {
+        return JSON.parse(localStorage.getItem(ADMIN_HISTORY_KEY)) || [];
+      } catch (error) {
+        console.error('관리자 로그인 기록을 불러오지 못했습니다.', error);
+        return [];
+      }
+    };
+
+    const saveHistory = history => {
+      localStorage.setItem(ADMIN_HISTORY_KEY, JSON.stringify(history));
+    };
+
+    const renderHistory = () => {
+      const history = loadHistory();
+      historyList.innerHTML = '';
+
+      if (!history.length) {
+        historyEmpty.hidden = false;
+        return;
+      }
+
+      historyEmpty.hidden = true;
+
+      history.forEach((id, index) => {
+        const item = document.createElement('li');
+        const name = document.createElement('strong');
+        name.textContent = id;
+
+        const label = document.createElement('span');
+        label.textContent = index === 0 ? '최근 관리자' : `기록 ${index + 1}`;
+
+        item.append(name, label);
+        historyList.appendChild(item);
+      });
+    };
+
+    form.addEventListener('submit', async event => {
+      event.preventDefault();
+      errorMessage.hidden = true;
+
+      const id = idInput.value.trim();
+      const password = passwordInput.value.trim();
+
+      if (!id || !password) {
+        errorMessage.textContent = '아이디와 비밀번호를 모두 입력해주세요.';
+        errorMessage.hidden = false;
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id, password })
+        });
+
+        if (!response.ok) {
+          const payload = await response.json().catch(() => ({}));
+          errorMessage.textContent = payload.error || '아이디 또는 비밀번호가 올바르지 않습니다.';
+          errorMessage.hidden = false;
+          return;
+        }
+
+        const payload = await response.json();
+        const { token, user } = payload;
+
+        if (!user || user.role !== 'admin') {
+          localStorage.removeItem(AUTH_TOKEN_KEY);
+          localStorage.removeItem(CURRENT_USER_KEY);
+          localStorage.removeItem(ROLE_KEY);
+          errorMessage.textContent = '관리자 권한이 없는 계정입니다. 관리자 전용 아이디로 로그인하세요.';
+          errorMessage.hidden = false;
+          return;
+        }
+
+        const history = loadHistory();
+        const filteredHistory = history.filter(entry => entry !== user.id);
+        filteredHistory.unshift(user.id);
+        saveHistory(filteredHistory);
+
+        localStorage.setItem(AUTH_TOKEN_KEY, token);
+        localStorage.setItem(CURRENT_USER_KEY, user.id);
+        localStorage.setItem(ROLE_KEY, user.role);
+
+        renderHistory();
+        window.location.href = 'admin.html';
+      } catch (error) {
+        console.error('admin login failed', error);
+        errorMessage.textContent = '서버에 연결하지 못했습니다. 잠시 후 다시 시도해주세요.';
+        errorMessage.hidden = false;
+      }
+    });
+
+    renderHistory();
+  </script>
+</body>
+</html>
