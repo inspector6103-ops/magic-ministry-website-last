@@ -3,14 +3,14 @@
     {
       "id": "admin",
       "password": "Ben0604$",
-      "role": "adminr"
+      "role": "admin"
     }
   ],
   "petitions": [],
   "sessions": [
     {
       "token": "f0ce11e7-324c-4314-bcfb-581ce3f925a9",
-      "userId": "admim",
+      "userId": "admin",
       "role": "admin",
       "createdAt": "2025-10-19T11:43:22.106Z"
     }
